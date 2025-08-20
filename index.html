@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Halal Invest Planner — MVP</title>
+  <meta name="description" content="Simple halal investment calculator, asset allocation, and ETF list." />
+  <meta name="keywords" content="halal investing, halal ETF, Islamic finance, zakat calculator" />
+  <style>
+    /* --- Minimal, clean styles (no frameworks) --- */
+    :root {
+      --bg: #0b1b1f;
+      --card: #142429;
+      --muted: #88a3ac;
+      --text: #e9f1f3;
+      --accent: #1bd1a5;
+      --danger: #ff6b6b;
+      --radius: 16px;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Liberation Sans", sans-serif; background: var(--bg); color: var(--text); }
+    header { padding: 24px; border-bottom: 1px solid rgba(255,255,255,.08); position: sticky; top: 0; background: linear-gradient(180deg, rgba(11,27,31,0.95) 0%, rgba(11,27,31,0.75) 100%); backdrop-filter: blur(8px); z-index: 50; }
+    h1 { margin: 0 0 8px; font-size: 24px; }
+    .sub { color: var(--muted); font-size: 14px; }
+    main { padding: 24px; max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 1.2fr .8fr; gap: 24px; }
+    @media (max-width: 980px){ main { grid-template-columns: 1fr; } }
+    .card { background: var(--card); border: 1px solid rgba(255,255,255,.06); border-radius: var(--radius); padding: 20px; box-shadow: 0 10px 20px rgba(0,0,0,.25); }
+    .card h2 { margin: 0 0 16px; font-size: 18px; }
+    label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+    input, select { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,.12); background: #0f2025; color: var(--text); }
+    .grid { display: grid; gap: 12px; grid-template-columns: repeat(2,1fr); }
+    @media (max-width: 640px){ .grid { grid-template-columns: 1fr; } }
+    .row { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
+    .btns { display: flex; gap: 10px; flex-wrap: wrap; }
+    button { cursor: pointer; background: var(--accent); border: none; padding: 12px 16px; border-radius: 12px; font-weight: 700; color: #002a1f; }
+    button.ghost { background: transparent; color: var(--text); border: 1px solid rgba(255,255,255,.16); }
+    .muted { color: var(--muted); font-size: 13px; }
+    .value { font-variant-numeric: tabular-nums; font-weight: 700; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: right; padding: 10px 8px; border-bottom: 1px dashed rgba(255,255,255,.1); }
+    th { color: var(--muted); font-weight: 600; }
+    td:first-child, th:first-child { text-align: left; }
+    .pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; background: #0f2025; border: 1px solid rgba(255,255,255,.12); font-size: 12px; color: var(--muted); }
+    footer { padding: 40px 24px; text-align: center; color: var(--muted); }
+    .flex { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+    .warn { color: var(--danger); font-weight: 600; }
+    .note { font-size: 12px; color: var(--muted); }
+    .list { display: grid; gap: 10px; }
+    .tag { font-size: 12px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Halal Invest Planner — MVP</h1>
+    <div class="sub">Simplified online version of your spreadsheet: capital growth, zakat-aware returns, asset allocation, and a small halal ETF directory.</div>
+  </header>
+
+  <main>
+    <!-- LEFT: Calculators & Tables -->
+    <section class="card">
+      <h2>📈 Capital Growth (with Zakat option)</h2>
+      <div class="grid">
+        <div>
+          <label>Starting Capital</label>
+          <input id="start" type="number" min="0" value="10000" />
+        </div>
+        <div>
+          <label>Monthly Contribution</label>
+          <input id="monthly" type="number" min="0" value="500" />
+        </div>
+        <div>
+          <label>Expected Annual Return (%)</label>
+          <input id="annual" type="number" min="0" step="0.1" value="8" />
+        </div>
+        <div>
+          <label>Years</label>
+          <input id="years" type="number" min="1" value="10" />
+        </div>
+        <div>
+          <label>Zakat Rate (% of qualifying assets)</label>
+          <input id="zakat" type="number" min="0" step="0.1" value="2.5" />
+        </div>
+        <div>
+          <label>Zakat Frequency</label>
+          <select id="zakatFreq">
+            <option value="annual" selected>Annual (end of year)</option>
+            <option value="none">None</option>
+          </select>
+        </div>
+      </div>
+      <div class="btns" style="margin-top:14px;">
+        <button id="run">Run Projection</button>
+        <button id="reset" class="ghost">Reset</button>
+      </div>
+      <p class="note" style="margin-top:10px;">Note: This is an educational projection. Not financial advice. Zakat calculation here is simplified (applied to end-of-year balance).</p>
+      <div class="flex" style="margin-top:16px;">
+        <div class="pill">Final Balance: <span id="finalBal" class="value">—</span></div>
+        <div class="pill">Total Contributions: <span id="totContrib" class="value">—</span></div>
+        <div class="pill">Total Zakat Paid: <span id="totZakat" class="value">—</span></div>
+      </div>
+      <canvas id="growthChart" height="220" style="margin-top:18px;"></canvas>
+
+      <h3 style="margin-top:20px;">Year-by-Year Table</h3>
+      <div style="overflow:auto;">
+        <table id="tbl">
+          <thead>
+            <tr>
+              <th>Year</th>
+              <th>Start Balance</th>
+              <th>Contrib (Year)</th>
+              <th>Return</th>
+              <th>Zakat</th>
+              <th>End Balance</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- RIGHT: ETF directory & Allocation -->
+    <aside class="card">
+      <h2>🕌 Halal ETF Directory (Mini)</h2>
+      <p class="muted">Curated examples (expand later). Add source links to Shariah boards on your production site.</p>
+      <div class="list" id="etfList"></div>
+
+      <h2 style="margin-top:24px;">🥧 Target Asset Allocation</h2>
+      <div class="row">
+        <div>
+          <label>Equities (%)</label>
+          <input id="allocEq" type="number" min="0" max="100" value="70" />
+        </div>
+        <div>
+          <label>Sukuk / Cash (%)</label>
+          <input id="allocSk" type="number" min="0" max="100" value="30" />
+        </div>
+      </div>
+      <p class="note">Must sum to 100%. Use this to sanity‑check your intended split.</p>
+      <canvas id="allocChart" height="220" style="margin-top:10px;"></canvas>
+      <div class="btns" style="margin-top:12px;">
+        <button id="savePrefs" class="ghost">Save Preferences</button>
+        <span id="saveMsg" class="tag"></span>
+      </div>
+    </aside>
+  </main>
+
+  <section class="card" style="max-width:1100px; margin: 0 auto;">
+    <h2>✍️ Blog / Advice (placeholders)</h2>
+    <p class="muted">Replace with your CMS later. For now, static blocks to prove layout + SEO.</p>
+    <article>
+      <h3>Top Halal ETFs to Watch in 2025</h3>
+      <p class="note">Explain screening methodology and provide references to Shariah boards.</p>
+    </article>
+    <article>
+      <h3>How to Calculate Zakat on Your Investment Portfolio</h3>
+      <p class="note">Clarify assumptions; many investors ask if long‑term holdings are zakatable at market value.</p>
+    </article>
+  </section>
+
+  <footer>
+    <div>© 2025 Halal Invest Planner (MVP). Educational use only.</div>
+  </footer>
+
+  <!-- Lightweight charts via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+    // ===== Utilities =====
+    const fmt = (n) => n.toLocaleString(undefined, {maximumFractionDigits: 0});
+    const money = (n) => n.toLocaleString(undefined, {style: 'currency', currency: 'USD'});
+
+    // ===== Halal ETF mini directory (seed data) =====
+    const ETFs = [
+      { ticker: 'SPUS', name: 'SP Funds S&P 500 Sharia Industry Exclusions ETF', region: 'USA', expense: 0.49, type: 'Equity', source: 'Sharia Board (provider site)' },
+      { ticker: 'SPSK', name: 'SP Funds Dow Jones Global Sukuk ETF', region: 'Global', expense: 0.65, type: 'Sukuk', source: 'Sharia Board (provider site)' },
+      { ticker: 'HLAL', name: 'Wahed FTSE USA Shariah ETF', region: 'USA', expense: 0.50, type: 'Equity', source: 'FTSE Shariah' },
+      { ticker: 'ISDU', name: 'iShares MSCI USA Islamic UCITS ETF', region: 'UCITS', expense: 0.60, type: 'Equity', source: 'MSCI Islamic' }
+    ];
+
+    function renderETFs(){
+      const box = document.getElementById('etfList');
+      box.innerHTML = '';
+      ETFs.forEach(e => {
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.style.padding = '12px';
+        div.innerHTML = `
+          <div class="flex">
+            <strong>${e.ticker}</strong>
+            <span class="tag">${e.region} • ${e.type} • ER ${e.expense}%</span>
+          </div>
+          <div class="muted">${e.name}</div>
+          <div class="note">Compliance: ${e.source}</div>
+        `;
+        box.appendChild(div);
+      });
+    }
+
+    // ===== Projection logic (annual compounding, monthly contributions) =====
+    let growthChart, allocChart;
+
+    function runProjection(){
+      const P0 = parseFloat(document.getElementById('start').value || 0);
+      const m  = parseFloat(document.getElementById('monthly').value || 0);
+      const r  = parseFloat(document.getElementById('annual').value || 0) / 100;
+      const Y  = parseInt(document.getElementById('years').value || 0);
+      const zRate = parseFloat(document.getElementById('zakat').value || 0) / 100;
+      const zFreq = document.getElementById('zakatFreq').value;
+
+      const labels = [];
+      const dataBal = [];
+      const tbody = document.querySelector('#tbl tbody');
+      tbody.innerHTML = '';
+
+      let bal = P0;
+      let totContrib = 0;
+      let totZakat = 0;
+
+      for(let y=1; y<=Y; y++){
+        const startBal = bal;
+        // Add contributions for the year (assume deposited monthly, simple sum)
+        const contribYear = m * 12;
+        totContrib += contribYear;
+        bal += contribYear;
+        // Apply annual return on average balance approx: using end balance before return (simplified)
+        const ret = bal * r;
+        bal += ret;
+        // Apply zakat at year end if enabled
+        let zak = 0;
+        if (zFreq === 'annual' && zRate > 0){
+          zak = bal * zRate; // Simplified assumption: zakat on end-of-year liquid value
+          bal -= zak;
+          totZakat += zak;
+        }
+        labels.push(`Y${y}`);
+        dataBal.push(Math.max(bal,0));
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${y}</td>
+          <td>${money(startBal)}</td>
+          <td>${money(contribYear)}</td>
+          <td>${money(ret)}</td>
+          <td>${money(zak)}</td>
+          <td>${money(bal)}</td>
+        `;
+        tbody.appendChild(row);
+      }
+
+      document.getElementById('finalBal').textContent = money(bal);
+      document.getElementById('totContrib').textContent = money(totContrib);
+      document.getElementById('totZakat').textContent = money(totZakat);
+
+      // Draw chart
+      const ctx = document.getElementById('growthChart');
+      if (growthChart) growthChart.destroy();
+      growthChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{ label: 'End Balance', data: dataBal }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: { y: { ticks: { callback: (v)=> '$'+fmt(v) } } }
+        }
+      });
+
+      // Save user inputs to localStorage for persistence
+      const prefs = {P0, m, r: r*100, Y, zRate: zRate*100, zFreq};
+      localStorage.setItem('hip_mvp_inputs', JSON.stringify(prefs));
+    }
+
+    function drawAlloc(){
+      const eq = parseFloat(document.getElementById('allocEq').value || 0);
+      const sk = parseFloat(document.getElementById('allocSk').value || 0);
+      const sum = eq + sk;
+      if (sum !== 100){
+        document.getElementById('saveMsg').textContent = 'Must equal 100%';
+      } else {
+        document.getElementById('saveMsg').textContent = '';
+      }
+      const ctx = document.getElementById('allocChart');
+      if (allocChart) allocChart.destroy();
+      allocChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: { labels: ['Equities', 'Sukuk/Cash'], datasets: [{ data: [eq, sk] }] },
+        options: { plugins: { legend: { position: 'bottom' } } }
+      });
+    }
+
+    // ===== Events =====
+    document.getElementById('run').addEventListener('click', runProjection);
+    document.getElementById('reset').addEventListener('click', () => {
+      document.getElementById('start').value = 10000;
+      document.getElementById('monthly').value = 500;
+      document.getElementById('annual').value = 8;
+      document.getElementById('years').value = 10;
+      document.getElementById('zakat').value = 2.5;
+      document.getElementById('zakatFreq').value = 'annual';
+      runProjection();
+    });
+    document.getElementById('allocEq').addEventListener('input', drawAlloc);
+    document.getElementById('allocSk').addEventListener('input', drawAlloc);
+    document.getElementById('savePrefs').addEventListener('click', () => {
+      const inputs = {
+        start: document.getElementById('start').value,
+        monthly: document.getElementById('monthly').value,
+        annual: document.getElementById('annual').value,
+        years: document.getElementById('years').value,
+        zakat: document.getElementById('zakat').value,
+        zakatFreq: document.getElementById('zakatFreq').value,
+        allocEq: document.getElementById('allocEq').value,
+        allocSk: document.getElementById('allocSk').value,
+      };
+      localStorage.setItem('hip_mvp_inputs', JSON.stringify(inputs));
+      document.getElementById('saveMsg').textContent = 'Saved ✓';
+      setTimeout(()=> document.getElementById('saveMsg').textContent = '', 1500);
+    });
+
+    // ===== Restore persisted inputs on load =====
+    function restore(){
+      renderETFs();
+      const saved = localStorage.getItem('hip_mvp_inputs');
+      if (saved){
+        const v = JSON.parse(saved);
+        if (v.start !== undefined) document.getElementById('start').value = v.start;
+        if (v.monthly !== undefined) document.getElementById('monthly').value = v.monthly;
+        if (v.annual !== undefined) document.getElementById('annual').value = v.annual;
+        if (v.years !== undefined) document.getElementById('years').value = v.years;
+        if (v.zakat !== undefined) document.getElementById('zakat').value = v.zakat;
+        if (v.zakatFreq !== undefined) document.getElementById('zakatFreq').value = v.zakatFreq;
+        if (v.allocEq !== undefined) document.getElementById('allocEq').value = v.allocEq;
+        if (v.allocSk !== undefined) document.getElementById('allocSk').value = v.allocSk;
+      }
+      runProjection();
+      drawAlloc();
+    }
+
+    restore();
+  </script>
+</body>
+</html>
